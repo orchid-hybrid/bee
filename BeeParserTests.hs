@@ -14,6 +14,8 @@ testsArith =
  , "x+3*y"
  , "z*w+h"
  , "z*(w+h)"
+ , "z<<(w+h)"
+ , "z-(w+h)"
  ]
 
 testArith = testReadP beeCalculation

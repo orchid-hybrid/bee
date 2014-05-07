@@ -23,16 +23,16 @@ beeCalculationTree = parseExpression beeCalculationLeaf operators
                    , (Or,"|"), (Shl,"<<"), (Shr,">>")
                    ] -- may require re-ordering
 
-beeCalculation = (do skipWhitespace
-                     calculation <- beeCalculationTree
-                     return $ Calculation Nothing calculation) +++
-                 (do skipWhitespace
-                     x <- name
-                     skipWhitespace
-                     string ":="
-                     skipWhitespace
-                     calculation <- beeCalculationTree
-                     return $ Calculation (Just x) calculation)
+optionally p = (do x <- p ; return (Just x)) +++ return Nothing
+
+beeCalculation = do skipWhitespace
+                    v <- optionally $ do x <- name
+                                         skipWhitespace
+                                         string ":="
+                                         skipWhitespace
+                                         return x
+                    calculation <- beeCalculationTree
+                    return $ Calculation v calculation
 
 braces p = do skipWhitespace
               char '{'
@@ -40,8 +40,6 @@ braces p = do skipWhitespace
               skipWhitespace
               char '}'
               return r
-
-optionally p = (do x <- p ; return (Just x)) +++ return Nothing
 
 beeBlock = braces $ do label <- optionally $ do skipWhitespace
                                                 label <- name
