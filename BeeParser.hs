@@ -1,5 +1,6 @@
 module BeeParser
  ( beeCalculation
+ , beeBlock
  ) where
 
 import BeeSyntax
@@ -32,3 +33,21 @@ beeCalculation = (do skipWhitespace
                      skipWhitespace
                      calculation <- beeCalculationTree
                      return $ Calculation (Just x) calculation)
+
+braces p = do skipWhitespace
+              char '{'
+              r <- p
+              skipWhitespace
+              char '}'
+              return r
+
+optionally p = (do x <- p ; return (Just x)) +++ return Nothing
+
+beeBlock = braces $ do label <- optionally $ do skipWhitespace
+                                                label <- name
+                                                char ':'
+                                                return label
+                       code <- many beeCode
+                       return $ Block label code
+
+beeCode = beeCalculation +++ beeBlock
