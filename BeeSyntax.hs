@@ -27,8 +27,9 @@ data BeeFunction
 data BeeCode
  = Calculation (Maybe Name) BeeCalculation -- x := 3+x or y&0xF5
  | Block (Maybe Name) [BeeCode]            -- {foo: ... } or {}
- | Loop (Maybe Condition) (Maybe Name)     -- loop; or loop foo;
- | Break (Maybe Condition) (Maybe Name)    -- same but break
+ | Loop (Maybe Name) (Maybe Condition)     -- loop; or loop foo;
+ | Break (Maybe Name) (Maybe Condition)    -- same but break
+ | Return (Maybe Name)
  deriving (Eq, Show)
 
 data Condition
