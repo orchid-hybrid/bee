@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+	nasm -f elf f.asm
+	gcc -m32 -c g.c
+	gcc -m32 f.o g.o test.c -o test
+	./test
+*/
+
 int f(int a, int b, int c, int d, int e);
 int g(int a, int b, int c, int d, int e);
 
