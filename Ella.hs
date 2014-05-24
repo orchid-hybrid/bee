@@ -87,7 +87,7 @@ testCase = do e <- randomExp'
                        in unlines ["section .text", "  global f", "f:"] ++
                           unlines ["  push ebp", "  mov ebp, esp", "  sub esp, 20"] ++
                           insts ++
-                          unlines ["  mov esp, ebp", "  pop ebp", "  ret 20"]
+                          unlines ["  mov esp, ebp", "  pop ebp", "  ret"]
 
 size (EVar _) = 1
 size (ENum _) = 1
