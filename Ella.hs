@@ -1,12 +1,8 @@
-module Ella
- (
- ) where
-
--- http://www.youtube.com/watch?v=PbL9vr4Q2LU
-
 import Data.Maybe
 import Control.Monad.State
 import System.Random
+
+-- http://www.youtube.com/watch?v=PbL9vr4Q2LU
 
 type Names a = State [Int] a
 freshName :: Names Int
@@ -82,19 +78,25 @@ test = do e <- randomExp
           print e
           runNames $ compile basicTable Nothing e
 
-testCase = do e <- randomExp
-              
-              putStrLn "Generating test.c"
-              putStrLn "Generating test.asm"
-              
-              writeFile "test.c" (generateC e)
-              writeFile "test.asm" (generateAsm e)
+testCase = do e <- randomExp'
+              writeFile "f.asm" (generateAsm e)
+              writeFile "g.c" (generateC e)
  where generateC e = "int g(int a, int b, int c, int d, int e) { return " ++ show e ++ "; }"
        generateAsm e = let insts = unlines . map (("  " ++) . show) . fst .
                                    runState (compile basicTable Nothing e) $ [-4,-8..]
                        in unlines ["section .text", "  global f", "f:"] ++
-                          insts ++ "  ret\n"
+                          unlines ["  push ebp", "  mov ebp, esp", "  sub esp, 20"] ++
+                          insts ++
+                          unlines ["  mov esp, ebp", "  pop ebp", "  ret 20"]
 
+size (EVar _) = 1
+size (ENum _) = 1
+size (EAdd x y) = size x + size y
+
+randomExp' = do e <- randomExp
+                if size e > 2
+                   then return e
+                   else randomExp'
 randomExp = do
     r <- randomRIO (0, 2) :: IO Int
     case r of
@@ -109,3 +111,4 @@ randomExp = do
             e2 <- randomExp
             return (EAdd e1 e2)
 
+main = testCase
