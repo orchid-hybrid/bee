@@ -83,8 +83,12 @@ test = do e <- randomExp
           runNames $ compile basicTable Nothing e
 
 testCase = do e <- randomExp
-              putStrLn $ generateC e
-              putStrLn $ generateAsm e
+              
+              putStrLn "Generating test.c"
+              putStrLn "Generating test.asm"
+              
+              writeFile "test.c" (generateC e)
+              writeFile "test.asm" (generateAsm e)
  where generateC e = "int g(int a, int b, int c, int d, int e) { return " ++ show e ++ "; }"
        generateAsm e = let insts = unlines . map (("  " ++) . show) . fst .
                                    runState (compile basicTable Nothing e) $ [-4,-8..]
