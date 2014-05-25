@@ -21,6 +21,7 @@ data Exp
  = EVar Name
  | ENum Int
  | EAdd Exp Exp
+ | ECall Name [Exp]
  deriving (Eq)
 instance Show Exp where
  show (EVar v) = v
@@ -30,27 +31,31 @@ instance Show Exp where
 data Thing
  = TNum Int
  | TMem Int
- | TReg
+ | TReg Name
  deriving (Eq)
 instance Show Thing where
   show (TNum i) = show i
   show (TMem l) | l < 0  = "[ebp"  ++ show l ++ "]"
   show (TMem l) | l == 0 = "[ebp]"
   show (TMem l) | l > 0  = "[ebp+" ++ show l ++ "]"
-  show (TReg) = "eax"
+  show (TReg r) = r
 
 data Asm
  = AMov Thing Thing
  | AAdd Thing Thing
+ | APush Thing
+ | ACall Name
  deriving (Eq)
 instance Show Asm where
  show (AMov p1 p2) = "mov dword " ++ show p1 ++ ", " ++ show p2
  show (AAdd p1 p2) = "add dword " ++ show p1 ++ ", " ++ show p2
+ show (APush (TReg r)) = "push " ++ r
+ show (ACall name) = "call " ++ name
 
 compile :: (Name -> Int) -> Maybe Int -> Exp -> Names [Asm]
-compile lookup Nothing (ENum i)  = return [ AMov TReg     (TNum i) ]
+compile lookup Nothing (ENum i)  = return [ AMov (TReg "ebx")     (TNum i) ]
 compile lookup (Just l) (ENum i) = return [ AMov (TMem l) (TNum i) ]
-compile lookup Nothing (EVar v)  = return [ AMov TReg     (TMem (lookup v)) ]
+compile lookup Nothing (EVar v)  = return [ AMov (TReg "ebx")     (TMem (lookup v)) ]
 compile lookup (Just l) (EVar v) = error "UNDEFINED"
 compile lookup b (EAdd x y) = do
   (xloc,xc) <- case x of
@@ -61,10 +66,20 @@ compile lookup b (EAdd x y) = do
   yc <- compile lookup Nothing     y
   return (   xc
           ++ yc
-          ++ [ AAdd TReg (TMem xloc) ]
+          ++ [ AAdd (TReg "ebx") (TMem xloc) ]
           ++ case b of
                Nothing -> []
-               Just l  -> [ AMov (TMem l) TReg ])
+               Just l  -> [ AMov (TMem l) (TReg "ebx") ])
+compile lookup b (ECall name args) = do
+ computeArgs <- mapM computeArg args
+ return (   concat computeArgs
+         ++ [ ACall name ]
+         ++ [ AAdd (TReg "esp") (TNum (length args*4)) ]
+         ++ case b of
+               Nothing -> [ AMov (TReg "ebx") (TReg "eax") ]
+               Just l  -> [ AMov (TMem l) (TReg "eax") ])
+  where computeArg arg = do c <- compile lookup Nothing arg
+                            return (c ++ [ APush (TReg "ebx") ])
 
 lookupTable t k = fromJust . lookup k $ t
 
@@ -88,6 +103,7 @@ testCase = do e <- randomExp'
                           unlines ["  push ebp", "  mov ebp, esp", "  sub esp, 20"] ++
                           insts ++
                           unlines ["  mov esp, ebp", "  pop ebp", "  ret"]
+-- TODO compiler should save ebx
 
 size (EVar _) = 1
 size (ENum _) = 1
