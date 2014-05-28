@@ -1,3 +1,5 @@
+module Ella where
+
 import Data.Maybe
 import Control.Monad.State
 --import System.Random
@@ -21,11 +23,16 @@ data Operator
      | Divide | Modulo
      deriving (Eq, Show)
 
+data Size = Byte | Word | DWord | QWord deriving (Eq)
+
+--data Structure = Structure Name [(Name, Size)]
+
 data Exp
  = EVar Name
  | ENum Int
  | EArithmetic Operator Exp Exp
  | EArrayAccess Name Exp
+ | EStructAccess Name Name
  | ECall Name [Exp]
  deriving (Eq)
 instance Show Exp where
@@ -112,30 +119,21 @@ compile lookup b (EArithmetic op x y) = do
         aop Multiply = AMul
         aop Subtract = ASub
 compile lookup b (EArrayAccess name index) = do
-      add <- compile lookup Nothing (EArithmetic Add (EVar name) index)
-      return (add ++ [AMov (TReg "ebx") (TDerefReg "ebx")])
-    
-
-{-
-   so for array accesses, we compute the expression in index, and put its result in a new variable
-   then we put the address of the variable in name in ebx and add them together and then um
-   I guess we want the value pointed at by ebx to be in ebx when we're done? not sure what the convention is for where things need to end up when we're done
-
-what is our register convention?
-we use ebx I think for the one-reigster technique, because it's callee saved
-and eax for function calls
-
-yeah,
-
-we could do ebx <- p + index
-then        ebx <- [ebx]
-okay :D
-
-there's a more efficient way, load-effective-address
-but let's do that later, for now this way is simple and good
-how would we represent mov ebx [ebx] in the Asm type?
-
--}
+  add <- compile lookup Nothing (EArithmetic Add (EVar name) index)
+  return (add ++ [AMov (TReg "ebx") (TDerefReg "ebx")])
+compile lookup' b (EStructAccess name field) =
+  return ([AMov (TReg "ebx") (TMem (pointer + offset))] ++ 
+          destination) where
+    pointer = lookup' name
+    fields = fromJust (lookup name structureTable)
+    offset = offset' field fields 0 where
+      offset' field [] n = error "undefined field in struct"
+      offset' field ((i, t):fs) n = if field == i
+        then n
+        else offset' field fs (n + (fromJust (lookup t sizeTable)))
+    destination = case b of
+      Just location -> [AMov (TMem location) (TReg "ebx")]
+      Nothing       -> []
 compile lookup b (ECall name args) = do
  computeArgs <- mapM computeArg args
  return (   concat computeArgs
@@ -154,6 +152,18 @@ basicTable "b" = 12
 basicTable "c" = 16
 basicTable "d" = 20
 basicTable "e" = 24
+
+-- example structure table
+structureTable = [("a", [("a", DWord),
+                          ("b", DWord)]),
+                  ("b", [("p", QWord),
+                          ("q", DWord),
+                          ("r", Word)])]
+
+sizeTable = [(Byte, 1),
+             (Word, 2),
+             (DWord, 4),
+             (QWord, 8)]
 
 optimizeAssembly :: [Asm] -> [Asm]
 optimizeAssembly assembly = single assembly where
