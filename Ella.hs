@@ -155,6 +155,16 @@ basicTable "c" = 16
 basicTable "d" = 20
 basicTable "e" = 24
 
+optimizeAssembly :: [Asm] -> [Asm]
+optimizeAssembly assembly = single assembly where
+  single instructions = let
+    predicate (AMov x y) | x == y = False
+    predicate (AAdd x y) | x == y = False
+    predicate (ASub x y) | x == y = False
+    predicate (AMul x y) | x == y = False
+    predicate _                   = True
+    in filter predicate instructions
+
 {-
 test = do e <- randomExp
           print e
