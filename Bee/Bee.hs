@@ -1,4 +1,7 @@
-module Main where
+module Bee (
+ Op(..), E(..),
+ compile
+ ) where
 
 import Control.Monad.Trans
 import Control.Monad.Writer
@@ -96,6 +99,7 @@ compile exp = do
  putStrLn $ "  enter 0,0"
  putStrLn $ "  pusha"
  putStrLn $ ""
+ putStrLn $ "  ;; exp: " ++ show exp
  putStrLn $ "  ;; result: " ++ show (eval exp)
  putStrLn $ "  ;; spills: " ++ show (length . nub . sort $ spills)
  putStrLn $ ""
@@ -114,7 +118,7 @@ compile exp = do
  putStrLn $ "  leave"
  putStrLn $ "  ret"
 
-main = compile $ (O Add (O Add (N 2) (N 5)) (N 3))
+-- main = compile $ (O Add (O Add (N 2) (N 5)) (N 3))
 
 {-
 
