@@ -7,6 +7,7 @@ import Control.Monad.Trans
 import Control.Monad.Writer
 import Data.Monoid
 import Data.List
+import Data.Int
 
 import Fresh
 import qualified X86 as X86
@@ -16,7 +17,7 @@ data Op
  deriving (Eq, Show)
 
 data E
- = N Int
+ = N Int32
  | O Op E E
  deriving (Eq, Show)
 
@@ -36,20 +37,19 @@ data It reg
  = Register reg
  | Deref reg
  | Cell Int
- | Num Int
+ | Num Int32
  deriving (Eq, Show)
 
 data A reg
  = AAdd (It reg) (It reg)
  | ASub (It reg) (It reg)
- | AMul (It reg) (It reg)
+ | AMul (It reg)
  
  | AMov (It reg) (It reg)
  deriving (Eq, Show)
 
 aop Add = AAdd
 aop Sub = ASub
-aop Mul = AMul
 
 ella :: E -> It () -> WriterT [A ()] (Fresh Int) ()
 ella (N i) r = tell [AMov r (Num i)]
@@ -57,7 +57,10 @@ ella (O op x y) r = do
  a <- lift $ fresh
  ella y (Cell a)
  ella x (Register ())
- tell [aop op (Register ()) (Cell a)]
+ case op of
+  Add -> tell [AAdd (Register ()) (Cell a)]
+  Sub -> tell [ASub (Register ()) (Cell a)]
+  Mul -> tell [AMul (Cell a)]
  if r == Register ()
     then return ()
     else tell [AMov r (Register ())]
@@ -69,7 +72,7 @@ runElla exp = snd $ runFresh (runWriterT $ ella exp (Register ())) [0..]
 registerAllocate = map r where
  r (AAdd x y) = X86.Add (i x) (i y)
  r (ASub x y) = X86.Sub (i x) (i y)
- r (AMul x y) = X86.Mul (i x) (i y)
+ r (AMul x) = X86.Mul (i x)
  r (AMov x y) = X86.Mov (i x) (i y)
  i (Register ()) = X86.R X86.EAX
  i (Deref ()) = X86.DR X86.EAX
@@ -79,7 +82,7 @@ registerAllocate = map r where
 getSpills = nub . sort . concatMap c where
  c (X86.Add x y) = i x ++ i y
  c (X86.Sub x y) = i x ++ i y
- c (X86.Mul x y) = i x ++ i y
+ c (X86.Mul x) = i x
  c (X86.Mov x y) = i x ++ i y
  i (X86.V v) = [v]
  i (X86.DV v) = [v]

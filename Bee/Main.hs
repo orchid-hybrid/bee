@@ -4,6 +4,8 @@ import System.Random
 
 import Bee
 
+-- ./Main > foo.s && make && grep result foo.s && ./foo
+
 data Tree = Leaf | Branch Tree Tree
  deriving (Eq, Show)
 
@@ -21,11 +23,15 @@ randomTree n = do
             return (Branch left right)
 
 randomOp = do
- o <- randomRIO (0, 1) :: IO Int
+ o <- randomRIO (0, 6) :: IO Int
  return $ case o of
   0 -> Add
   1 -> Sub
-  --2 -> Mul
+  2 -> Add
+  3 -> Sub
+  4 -> Add
+  5 -> Sub
+  6 -> Mul
 
 randomExp Leaf = do
  n <- randomRIO (-30, 30)
@@ -36,5 +42,5 @@ randomExp (Branch left right) = do
  o <- randomOp
  return (O o x y)
 
-main = do test <- randomExp =<< randomTree 5
+main = do test <- randomExp =<< randomTree 18
           compile test

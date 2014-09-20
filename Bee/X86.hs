@@ -4,6 +4,7 @@ module X86 (
  ) where
 
 import Data.Char
+import Data.Int
 
 data Register
  = EAX | EBX | ECX | EDX
@@ -12,7 +13,7 @@ data Register
  deriving (Eq, Show)
 
 data X
- = I Int
+ = I Int32
  | R Register
  | V String -- global variable
  | DR Register
@@ -21,7 +22,7 @@ data X
 data X86
  = Add X X
  | Sub X X
- | Mul X X
+ | Mul X
  
  | Mov X X
 
@@ -38,7 +39,7 @@ op (DV s) = "[" ++ s ++ "]"
 s' :: X86 -> String
 s' (Add x y) = "add   dword " ++ op x ++ "," ++ op y
 s' (Sub x y) = "sub   dword " ++ op x ++ "," ++ op y
-s' (Mul x y) = "mul   dword " ++ op x ++ "," ++ op y
+s' (Mul x) = "mul   dword " ++ op x
 s' (Mov x y) = "mov   dword " ++ op x ++ "," ++ op y
 
 s :: [X86] -> String
