@@ -1,5 +1,7 @@
 module Bee (
- Op(..), E(..),
+ Op(..), E(..), eval,
+ Cell, It(..), A(..),
+ ella, runElla,
  compile
  ) where
 
@@ -36,7 +38,7 @@ cells = [1..]
 data It reg
  = Register reg
  | Deref reg
- | Cell Int
+ | Cell Cell
  | Num Int32
  deriving (Eq, Show)
 

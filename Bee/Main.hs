@@ -29,8 +29,8 @@ randomOp = do
   1 -> Sub
   2 -> Add
   3 -> Sub
-  4 -> Add
-  5 -> Sub
+  4 -> Mul
+  5 -> Mul
   6 -> Mul
 
 randomExp Leaf = do
