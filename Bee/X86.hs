@@ -18,6 +18,7 @@ data X
  | V String -- global variable
  | DR Register
  | DV String
+ deriving (Eq, Show)
 
 data X86
  = Add X X
@@ -25,6 +26,7 @@ data X86
  | Mul X
  
  | Mov X X
+ deriving (Eq, Show)
 
 red :: Register -> String
 red = map toLower . show
@@ -39,7 +41,7 @@ op (DV s) = "[" ++ s ++ "]"
 s' :: X86 -> String
 s' (Add x y) = "add   dword " ++ op x ++ "," ++ op y
 s' (Sub x y) = "sub   dword " ++ op x ++ "," ++ op y
-s' (Mul x) = "mul   dword " ++ op x
+s' (Mul x)   = "mul   dword " ++ op x
 s' (Mov x y) = "mov   dword " ++ op x ++ "," ++ op y
 
 s :: [X86] -> String

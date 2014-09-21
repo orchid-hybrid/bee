@@ -1,8 +1,12 @@
 module Coloring (
+ livenessAnalysis, livenessGraph, graphColoring,
+ registerAllocate,
+ dotAllocationGraph,
  ) where
 
 import Data.Maybe
 import Data.List
+import Data.Function
 import Data.Ord
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -10,31 +14,10 @@ import Data.Graph.Inductive.Dot
 import System.Process
 import Control.Monad.State
 
-import Bee
+import Debug.Trace
 
-test = runElla
-
-test1 =  (O Add (O Add (O Add (N 1) (N 2)) (N 3)) (N 4))
-test2 =  (O Add (N 1) (O Add (N 2) (O Add (N 3) (N 4))))
-test3 =  (O Add (O Add test2 test1) (N 1))
-
--- AMov (Cell 0) (Num 4)       |
--- AMov (Cell 1) (Num 3)       | |
--- AMov (Cell 2) (Num 2)       | | |
--- AMov (Register ()) (Num 1)  | | |
--- AAdd (Register ()) (Cell 2) | | |
--- AAdd (Register ()) (Cell 1) | |
--- AAdd (Register ()) (Cell 0) |
-
--- AMov (Cell 2) (Num 4)        |
--- AMov (Register ()) (Num 3)   |
--- AAdd (Register ()) (Cell 2)  |
--- AMov (Cell 1) (Register ())   |
--- AMov (Register ()) (Num 2)    |
--- AAdd (Register ()) (Cell 1)   |
--- AMov (Cell 0) (Register ())    |
--- AMov (Register ()) (Num 1)     |
--- AAdd (Register ()) (Cell 0)    |
+import Language
+import qualified X86 as X86
 
 type Lifetime = (Int, Int)
 
@@ -59,11 +42,6 @@ livenessAnalysis n (x:xs) = birth n x xs ++ livenessAnalysis (n+1) xs
        death m n i (AMov _ _:rest) = death m (n+1) i rest
        death m n i [] = [(i,(m,n))]
 
--- *Coloring> livenessAnalysis 0 test1
--- [(0,(0,6)),(1,(1,5)),(2,(2,4))]
--- *Coloring> livenessAnalysis 0 test2
--- [(2,(0,2)),(1,(3,5)),(0,(6,8))]
-
 livenessGraph :: [(Node, Lifetime)] -> Gr Lifetime ()
 livenessGraph analysis = mkGraph nodes edges where
  nodes = analysis
@@ -86,8 +64,23 @@ graphColoring graph = gmap color graph where
  color (l, i, _, r) = (l, i, fromJust . lookup i $ colors, r)
  colors = coloring graph
 
-runTest test = do
-    let dot = showDot  . fglToDot . graphColoring . livenessGraph . livenessAnalysis 0 $ test
+registerAllocate asm = map r asm where
+ colors = graphColoring . livenessGraph . livenessAnalysis 0 $ asm
+ priority = map (snd . head) . sortBy (flip (comparing length)) . groupBy ((==)`on`snd) . labNodes $ colors
+ allocation = zip priority ([X86.R X86.EBX, X86.R X86.ECX, X86.R X86.ESI, X86.R X86.EDI] ++ map ((X86.DV) . ("ev"++) . show) [0..])
+ r (AAdd x y) = X86.Add (i x) (i y)
+ r (ASub x y) = X86.Sub (i x) (i y)
+ r (AMul x) = X86.Mul (i x)
+ r (AMov x y) = X86.Mov (i x) (i y)
+ i (Register ()) = X86.R X86.EAX
+ i (Deref ()) = X86.DR X86.EAX
+ i (Cell c) = let y = lookup c . labNodes $ colors in
+              let x = lookup (fromJust y) $ allocation
+               in fromJust x
+ i (Num n) = X86.I n
+
+dotAllocationGraph asm = do
+    let dot = showDot  . fglToDot . graphColoring . livenessGraph . livenessAnalysis 0 $ asm
     writeFile "file.dot" dot
     system("dot -Tpng -ofile.png file.dot")
 

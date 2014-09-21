@@ -2,7 +2,8 @@ module Main where
 
 import System.Random
 
-import Bee
+import Language
+import Ella
 
 -- ./Main > foo.s && make && grep result foo.s && ./foo
 

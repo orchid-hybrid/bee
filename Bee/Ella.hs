@@ -1,6 +1,4 @@
-module Bee (
- Op(..), E(..), eval,
- Cell, It(..), A(..),
+module Ella (
  ella, runElla,
  compile
  ) where
@@ -12,43 +10,10 @@ import Data.List
 import Data.Int
 
 import Fresh
+import Language
 import qualified X86 as X86
-
-data Op
- = Add | Sub | Mul
- deriving (Eq, Show)
-
-data E
- = N Int32
- | O Op E E
- deriving (Eq, Show)
-
-eop Add = (+)
-eop Sub = (-)
-eop Mul = (*)
-
-eval (N i) = i
-eval (O op x y) = eop op (eval x) (eval y)
-
---
-
-type Cell = Int
-cells = [1..]
-
-data It reg
- = Register reg
- | Deref reg
- | Cell Cell
- | Num Int32
- deriving (Eq, Show)
-
-data A reg
- = AAdd (It reg) (It reg)
- | ASub (It reg) (It reg)
- | AMul (It reg)
- 
- | AMov (It reg) (It reg)
- deriving (Eq, Show)
+import Coloring hiding (registerAllocate)
+import qualified Coloring
 
 aop Add = AAdd
 aop Sub = ASub
@@ -91,12 +56,15 @@ getSpills = nub . sort . concatMap c where
  i _ = []
 
 compile exp = do
- let asm = registerAllocate . runElla $ exp
+ let ella = runElla $ exp
+ let asm = registerAllocate $ ella
+ let asm' = Coloring.registerAllocate $ ella
  let spills = getSpills asm
+ let spills' = getSpills asm'
  putStrLn $ "extern print_number"
  putStrLn $ ""
  putStrLn $ "section .bss"
- putStrLn $ unlines (map (\c -> "  " ++ c ++ ": resd 1") spills)
+ putStrLn $ unlines (map (\c -> "  " ++ c ++ ": resd 1") spills')
  putStrLn $ ""
  putStrLn $ "section .data"
  putStrLn $ "  global asm_main"
@@ -106,9 +74,10 @@ compile exp = do
  putStrLn $ ""
  putStrLn $ "  ;; exp: " ++ show exp
  putStrLn $ "  ;; result: " ++ show (eval exp)
- putStrLn $ "  ;; spills: " ++ show (length . nub . sort $ spills)
+ putStrLn $ "  ;; naive spills: " ++ show (length . nub . sort $ spills)
+ putStrLn $ "  ;; optimized spills: " ++ show (length . nub . sort $ spills')
  putStrLn $ ""
- putStrLn $ X86.s asm
+ putStrLn $ X86.s asm'
  putStrLn $ ""
  putStrLn $ "  push ebp"
  putStrLn $ "  mov ebp,esp"
